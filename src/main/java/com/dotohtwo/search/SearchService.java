@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 @Service
 public class SearchService {
@@ -24,46 +25,25 @@ public class SearchService {
         this.redis = redis;
     }
 
-    /**
-     * Searches for users whose username partially matches {@code text}.
-     *
-     * Expects members in the sorted set to follow the format {@code username:id}.
-     */
     public List<User> searchUsers(String text) {
-        List<User> results = new ArrayList<>();
-        ScanOptions options = ScanOptions.scanOptions().match("*" + text + "*").count(100).build();
-
-        try (Cursor<ZSetOperations.TypedTuple<String>> cursor =
-                     redis.opsForZSet().scan(USERS_KEY, options)) {
-            while (cursor.hasNext() && results.size() < LIMIT) {
-                String member = cursor.next().getValue();
-                if (member == null) continue;
-                int sep = member.lastIndexOf(':');
-                if (sep < 1) continue;
-                results.add(new User(member.substring(sep + 1), member.substring(0, sep)));
-            }
-        }
-
-        return results;
+        return scan(USERS_KEY, text, (name, id) -> new User(id, name));
     }
 
-    /**
-     * Searches for reviewables whose title partially matches {@code text}.
-     *
-     * Expects members in the sorted set to follow the format {@code title:id}.
-     */
     public List<Reviewable> searchReviewables(String text) {
-        List<Reviewable> results = new ArrayList<>();
+        return scan(REVIEWABLES_KEY, text, (title, id) -> new Reviewable(id, title));
+    }
+
+    private <T> List<T> scan(String key, String text, BiFunction<String, String, T> mapper) {
+        List<T> results = new ArrayList<>();
         ScanOptions options = ScanOptions.scanOptions().match("*" + text + "*").count(100).build();
 
-        try (Cursor<ZSetOperations.TypedTuple<String>> cursor =
-                     redis.opsForZSet().scan(REVIEWABLES_KEY, options)) {
+        try (Cursor<ZSetOperations.TypedTuple<String>> cursor = redis.opsForZSet().scan(key, options)) {
             while (cursor.hasNext() && results.size() < LIMIT) {
                 String member = cursor.next().getValue();
                 if (member == null) continue;
                 int sep = member.lastIndexOf(':');
                 if (sep < 1) continue;
-                results.add(new Reviewable(member.substring(sep + 1), member.substring(0, sep)));
+                results.add(mapper.apply(member.substring(0, sep), member.substring(sep + 1)));
             }
         }
 
