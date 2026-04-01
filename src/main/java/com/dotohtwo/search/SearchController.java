@@ -20,12 +20,14 @@ public class SearchController {
     }
 
     @GetMapping("/users")
-    public List<User> searchUsers(@RequestParam String text) {
-        return searchService.searchUsers(text);
+    public List<User> searchUsers(@RequestParam String text,
+                                  @RequestParam(defaultValue = "10") int limit) {
+        return searchService.searchUsers(text, limit);
     }
 
     @GetMapping("/reviewables")
-    public List<Reviewable> searchReviewables(@RequestParam String text) {
-        return searchService.searchReviewables(text);
+    public List<Reviewable> searchReviewables(@RequestParam String text,
+                                              @RequestParam(defaultValue = "10") int limit) {
+        return searchService.searchReviewables(text, limit);
     }
 }
