@@ -1,21 +1,14 @@
 services:
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
   api:
     build: .
     ports:
       - "8080:8080"
+    networks:
+      - dotohtwolocalinfra
     environment:
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-    depends_on:
-      redis:
-        condition: service_healthy
+      ELASTICSEARCH_URIS: http://elasticsearch:9200
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+
+networks:
+  dotohtwolocalinfra:
+    external: true
